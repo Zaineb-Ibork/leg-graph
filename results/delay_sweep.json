@@ -1,0 +1,26 @@
+{
+  "10": {
+    "hold last value": 9.958502769470215,
+    "own history only": 0.7005324959754944,
+    "anatomical leg graph": 0.5443959832191467,
+    "fully connected + attention": 0.5200541019439697
+  },
+  "20": {
+    "hold last value": 15.247102737426758,
+    "own history only": 0.9399983882904053,
+    "anatomical leg graph": 0.7587582468986511,
+    "fully connected + attention": 0.7324551939964294
+  },
+  "40": {
+    "hold last value": 18.446584701538086,
+    "own history only": 1.2503241300582886,
+    "anatomical leg graph": 0.9394179582595825,
+    "fully connected + attention": 0.9245818853378296
+  },
+  "80": {
+    "hold last value": 4.058284282684326,
+    "own history only": 1.291676640510559,
+    "anatomical leg graph": 0.8202468156814575,
+    "fully connected + attention": 0.7989628911018372
+  }
+}

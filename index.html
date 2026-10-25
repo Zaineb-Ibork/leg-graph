@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>leg-graph · Inter-leg coordination in NeuroMechFly</title>
+<meta name="description" content="Can the other five legs of a simulated fly reveal the posture of a sixth leg seen with a delay? Graph neural networks on NeuroMechFly walking data.">
+<style>
+:root{
+  --bg:#fbfaf7;--surface:#ffffff;--ink:#1d1b26;--muted:#5e5a6e;--faint:#8f8a9e;--line:#e6e2ec;
+  --accent:#6b3fa0;--accent-2:#c2457a;--c-own:#8a8698;--c-anat:#d9822b;--c-full:#2f8f6b;--c-hold:#c9c4d3;
+  --code:#f3f1f6;--stance:#2b2733;--swing:#f1eef5;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131218;--surface:#1b1a22;--ink:#ecebf1;--muted:#a7a3b5;--faint:#7c7889;--line:#2d2b37;
+  --accent:#b48be6;--accent-2:#ee7aa8;--c-own:#9c98ab;--c-anat:#f0a352;--c-full:#4cc495;--c-hold:#4a4657;
+  --code:#22212b;--stance:#e7e3ef;--swing:#26242f;}}
+:root[data-theme="dark"]{
+  --bg:#131218;--surface:#1b1a22;--ink:#ecebf1;--muted:#a7a3b5;--faint:#7c7889;--line:#2d2b37;
+  --accent:#b48be6;--accent-2:#ee7aa8;--c-own:#9c98ab;--c-anat:#f0a352;--c-full:#4cc495;--c-hold:#4a4657;
+  --code:#22212b;--stance:#e7e3ef;--swing:#26242f;}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:0 20px}
+header{padding:64px 0 28px;border-bottom:1px solid var(--line)}
+.eyebrow{font:500 12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(28px,5vw,42px);line-height:1.15;margin:12px 0 14px;letter-spacing:-.02em}
+.lede{font-size:19px;color:var(--muted);margin:0 0 20px;max-width:46em}
+.meta{display:flex;flex-wrap:wrap;gap:10px 18px;font-size:14px;color:var(--muted)}
+.meta a{color:var(--accent);text-decoration:none;font-weight:600}
+.meta a:hover{text-decoration:underline}
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 0}
+nav.toc a{font-size:13px;padding:5px 11px;border:1px solid var(--line);border-radius:999px;color:var(--muted);text-decoration:none;background:var(--surface)}
+nav.toc a:hover{color:var(--accent);border-color:var(--accent)}
+section{padding:44px 0 8px}
+h2{font-size:26px;letter-spacing:-.01em;margin:0 0 6px}
+h2 .n{font:500 13px ui-monospace,Menlo,monospace;color:var(--accent);margin-right:10px;vertical-align:middle}
+h3{font-size:18px;margin:28px 0 6px}
+p{margin:10px 0}
+.muted{color:var(--muted)}
+figure{margin:22px 0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 18px 12px}
+figure svg{width:100%;height:auto;display:block}
+figure img{width:100%;height:auto;display:block;border-radius:6px;background:#fff}
+figcaption{font-size:14px;color:var(--muted);margin-top:10px}
+figcaption b{color:var(--ink)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:720px){.grid2{grid-template-columns:1fr}}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+@media (max-width:720px){.steps{grid-template-columns:1fr 1fr}}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.step .k{font:600 12px ui-monospace,Menlo,monospace;color:var(--accent)}
+.step h4{margin:4px 0 4px;font-size:15px}
+.step p{font-size:13.5px;color:var(--muted);margin:0}
+.step code{font-size:12px}
+.callout{border-left:3px solid var(--accent);background:var(--surface);padding:12px 16px;border-radius:0 10px 10px 0;margin:18px 0}
+.callout.warn{border-left-color:var(--accent-2)}
+.callout b{color:var(--ink)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;margin:12px 0}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;color:var(--muted);font-size:13px}
+td.best{font-weight:700;color:var(--c-full)}
+.tablewrap{overflow-x:auto}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+code{background:var(--code);padding:1px 5px;border-radius:5px;font-size:.88em}
+pre{background:var(--code);padding:14px 16px;border-radius:10px;overflow-x:auto;font-size:13.5px;line-height:1.55}
+pre code{background:none;padding:0}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted);margin:2px 0 8px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.tabs button{font:inherit;font-size:13px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--muted);cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+ul.clean{padding-left:18px}ul.clean li{margin:6px 0}
+footer{margin-top:56px;padding:28px 0 60px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted)}
+footer a{color:var(--accent)}
+.svgtext{fill:var(--ink)}.svgmuted{fill:var(--muted)}.svgfaint{fill:var(--faint)}
+</style>
+</head>
+<body>
+<header>
+ <div class="wrap">
+  <div class="eyebrow">Exploratory project · NeuroMechFly / FlyGym</div>
+  <h1>leg-graph: what do five legs know about the sixth?</h1>
+  <p class="lede">I simulate walking in NeuroMechFly and ask a graph question: if one leg is only observed with a delay, how well can its current posture be recovered from the other five legs, and which legs carry that information?</p>
+  <div class="meta">
+   <span>Zaineb Ibork · JSPS postdoctoral fellow, NII Tokyo</span>
+   <a href="https://github.com/zaineb-ibork/leg-graph">Code on GitHub →</a>
+   <a href="https://zaineb-ibork.github.io">Homepage →</a>
+  </div>
+  <nav class="toc" aria-label="Sections">
+   <a href="#question">Question</a><a href="#test">The test</a><a href="#process">Process</a><a href="#e1">Results</a><a href="#e2">Unseen gait</a><a href="#e3">Attention</a><a href="#limits">Limitations</a><a href="#run">Reproduce</a>
+  </nav>
+ </div>
+</header>
+
+<main class="wrap">
+
+<section id="question">
+ <h2><span class="n">01</span>The question</h2>
+ <p>A walking fly coordinates six legs. Each leg cycles between <b>stance</b> (on the ground, pushing) and <b>swing</b> (in the air, moving forward), and the legs keep consistent phase relationships with one another. In the classic <b>tripod</b> gait, front and hind legs on one side move together with the middle leg on the other side.</p>
+ <p>If legs are coordinated, the state of the other legs should reveal a lot about any one leg. Treating the six legs as nodes of a <b>graph</b> lets us ask this precisely with graph neural networks, the tool I use daily for 3D meshes. It is also a small step toward the question that interests me most: how the structure of a network, whether a body plan or a connectome, shapes the motor patterns it produces.</p>
+
+ <div class="grid2">
+  <figure>
+   <svg id="leggraph" viewBox="0 0 360 300" role="img" aria-label="Six-leg graph with ipsilateral and contralateral edges"></svg>
+   <figcaption><b>The leg graph.</b> Six nodes (L/R × front, middle, hind). Solid edges link ipsilateral neighbours and contralateral pairs (7 edges): the <i>anatomical</i> graph. The fully connected variant links every pair.</figcaption>
+  </figure>
+  <figure>
+   <div class="tabs" id="rtabs" role="group" aria-label="Gait"></div>
+   <svg id="raster" viewBox="0 0 360 230" role="img" aria-label="Stance and swing raster over 300 ms"></svg>
+   <figcaption><b>What coordination looks like.</b> Stance (filled bars) and swing (gaps) for each leg over 300 ms of simulated walking, from ground-contact forces. Switch gaits to see different phase patterns.</figcaption>
+  </figure>
+ </div>
+</section>
+
+<section id="test">
+ <h2><span class="n">02</span>The test: imputing a delayed leg</h2>
+ <p>For a target leg <i>k</i> at time <i>t</i>, the model sees the last 20 ms of state (7 joint angles and stance) of the <b>other five legs</b>, but only a 20 ms window of leg <i>k</i> that ends <b><i>d</i> ms earlier</b>. It must predict leg <i>k</i>'s seven joint angles at time <i>t</i>.</p>
+ <figure>
+  <svg id="timeline" viewBox="0 0 720 250" role="img" aria-label="Input windows for the imputation task"></svg>
+  <figcaption><b>Inputs and target.</b> The five informant legs are seen up to now; the target leg only up to <i>t − d</i>. Comparing models that may or may not pass messages between legs tells us how much the other legs add beyond the leg's own past.</figcaption>
+ </figure>
+ <div class="tablewrap"><table>
+  <thead><tr><th>Model</th><th>What it can use</th></tr></thead>
+  <tbody>
+   <tr><td>hold last value</td><td style="text-align:left">Repeats the last delayed observation (trivial floor)</td></tr>
+   <tr><td><span style="color:var(--c-own)">■</span> own history only</td><td style="text-align:left">Same network, but each leg only talks to itself: pure extrapolation</td></tr>
+   <tr><td><span style="color:var(--c-anat)">■</span> anatomical leg graph</td><td style="text-align:left">Messages along the 7 anatomical edges</td></tr>
+   <tr><td><span style="color:var(--c-full)">■</span> fully connected + attention</td><td style="text-align:left">Messages between all legs; attention weights are learned</td></tr>
+  </tbody></table></div>
+</section>
+
+<section id="process">
+ <h2><span class="n">03</span>Process</h2>
+ <div class="steps">
+  <div class="step"><div class="k">1 · simulate</div><h4>NeuroMechFly walking</h4><p>CPG controller from the FlyGym tutorials, tripod / tetrapod / wave gaits, 6 seeds × 3 s, random coupling strength. <code>simulate.py</code></p></div>
+  <div class="step"><div class="k">2 · record</div><h4>42 joint angles</h4><p>7 actuated DoFs per leg, ground contact forces and thorax position at 500 Hz (~27k frames).</p></div>
+  <div class="step"><div class="k">3 · model</div><h4>Graph attention</h4><p>2 attention layers over 6 leg nodes, with a fixed adjacency mask (self / anatomical / full). <code>legraph.py</code></p></div>
+  <div class="step"><div class="k">4 · evaluate</div><h4>4 experiments</h4><p>Held-out seeds, unseen gait, attention maps, delay sweep. <code>train.py</code>, <code>delay_sweep.py</code></p></div>
+ </div>
+ <p class="muted">Everything runs on a laptop CPU in about 15 minutes. Errors are reported as RMSE in degrees on the hidden leg's joint angles, on data never used for training.</p>
+</section>
+
+<section id="e1">
+ <h2><span class="n">04</span>Result 1: the other legs help</h2>
+ <p>Trained on seeds 0 to 3, tested on seeds 4 and 5. The target leg is seen 20 ms late, about a quarter of the ~83 ms step cycle.</p>
+ <figure>
+  <div class="legend"><span><i style="background:var(--c-own)"></i>own history only</span><span><i style="background:var(--c-anat)"></i>anatomical leg graph</span><span><i style="background:var(--c-full)"></i>fully connected + attention</span></div>
+  <svg id="e1chart" viewBox="0 0 720 280" role="img" aria-label="RMSE per gait and model"></svg>
+  <figcaption><b>RMSE of the hidden leg (deg), lower is better.</b> Repeating the last value gives ~15° on every gait (off the chart).</figcaption>
+ </figure>
+ <div class="callout"><b>Interpretation.</b> Extrapolating a leg's own past is already good, because CPG-driven stepping is very regular. Still, adding the other legs lowers the error by <b>13 % (tripod), 29 % (tetrapod) and 12 % (wave)</b>. The anatomical graph with only 7 edges is almost as good as the fully connected one: most of the useful information travels between neighbouring legs.</div>
+ <figure>
+  <img src="results/example_trace.png" alt="Ground truth, graph model prediction and hold-last-value baseline for the left middle leg tibia angle over 600 ms" loading="lazy">
+  <figcaption><b>Example.</b> Tibia pitch of the left middle leg on a held-out tripod episode. The graph model (green) tracks the true angle while the leg's own signal is 20 ms stale; repeating the last value (dashed) lags behind.</figcaption>
+ </figure>
+
+ <h3>The staler the leg, the more the others matter</h3>
+ <figure>
+  <svg id="e4chart" viewBox="0 0 720 300" role="img" aria-label="RMSE versus delay"></svg>
+  <figcaption><b>Delay sweep</b> (all gaits pooled, 8 training epochs). Labels give the error reduction brought by the other legs.</figcaption>
+ </figure>
+ <div class="callout"><b>Interpretation.</b> As the leg's own window becomes older, extrapolation degrades, while the graph models keep using fresh information from the other legs. Near one full step cycle (80 ms), the other legs reduce the error by <b>38 %</b>. The small improvement of every model at 80 ms is a periodicity effect: one cycle later, the leg is back near the same posture.</div>
+</section>
+
+<section id="e2">
+ <h2><span class="n">05</span>Result 2: a useful negative result</h2>
+ <p>Trained on tripod and tetrapod only, tested on the <b>wave</b> gait, a coordination pattern never seen during training.</p>
+ <figure>
+  <svg id="e2chart" viewBox="0 0 720 200" role="img" aria-label="Cross-gait RMSE"></svg>
+  <figcaption><b>RMSE on the unseen wave gait (deg).</b></figcaption>
+ </figure>
+ <div class="callout warn"><b>Interpretation.</b> The ranking flips: the leg-only model generalizes best. The graph models learned the <i>specific phase relations</i> of the training gaits, and these relations mislead them when coordination changes. Purely data-driven message passing captures correlations, not the mechanism that produces them. Generalizing across gaits likely needs structure closer to the actual controller: coupled oscillators, local inter-leg rules, or ultimately the connectome.</div>
+</section>
+
+<section id="e3">
+ <h2><span class="n">06</span>Result 3: which legs does the model listen to?</h2>
+ <figure>
+  <div class="tabs" id="atabs" role="group" aria-label="Gait"></div>
+  <svg id="attn" viewBox="0 0 720 330" role="img" aria-label="Attention heatmap"></svg>
+  <figcaption><b>Last-layer attention</b> of the fully connected model. Each row is a hidden leg; columns show how much it attends to each leg, averaged over test samples. The diagonal is the leg's own (delayed) history.</figcaption>
+ </figure>
+ <div class="callout"><b>Interpretation.</b> Attention is concentrated on a few partner legs, and the partners change with the gait. In the tripod gait, the front legs rely mostly on their own delayed history, while the hind legs listen most to the front leg on the same side. In the tetrapod and wave gaits, the dominant partners change. These maps are read-outs of a trained model: they show which correlations it exploits, <b>not causal coupling</b> between legs.</div>
+</section>
+
+<section id="limits">
+ <h2><span class="n">07</span>Limitations and next steps</h2>
+ <ul class="clean">
+  <li><b>The coordination is imposed by the controller.</b> The CPG and preprogrammed steps define the gaits, so the models recover what the controller encodes. This validates the method; it is not a finding about flies. In this simulation, the tetrapod and wave gaits also make the fly turn rather than walk straight.</li>
+  <li><b>Emergent coordination.</b> Repeat the test with the rule-based and hybrid controllers and on rough terrain, where coordination emerges from local rules and sensory feedback.</li>
+  <li><b>Real data.</b> Apply the same imputation test to 3D kinematics of tracked flies, where coordination is not designed but measured.</li>
+  <li><b>From body graph to wiring diagram.</b> Replace the 6-node leg graph by a connectome-constrained network, and test whether the wiring predicts the same inter-leg dependencies.</li>
+ </ul>
+</section>
+
+<section id="run">
+ <h2><span class="n">08</span>Reproduce</h2>
+<pre><code>git clone https://github.com/zaineb-ibork/leg-graph && cd leg-graph
+pip install -r requirements.txt
+python simulate.py --out data --duration 3.0 --seeds 0 1 2 3 4 5   # ~4 min CPU
+python train.py --data data --out results                          # ~7 min CPU
+python delay_sweep.py --data data --out results</code></pre>
+</section>
+
+</main>
+<footer>
+ <div class="wrap">
+  <p>Built with <a href="https://github.com/NeLy-EPFL/flygym">FlyGym / NeuroMechFly</a> (NeLy lab, EPFL), MuJoCo and PyTorch.</p>
+  <p>Zaineb Ibork · <a href="mailto:dr.zaineb.ibork@gmail.com">dr.zaineb.ibork@gmail.com</a> · <a href="https://zaineb-ibork.github.io">zaineb-ibork.github.io</a></p>
+ </div>
+</footer>
+
+<script>
+const DATA = {"E1": {"hold last value": {"tetrapod": 15.095346450805664, "tripod": 15.394725799560547, "wave": 15.249763488769531}, "own history only": {"tetrapod": 0.8924601078033447, "tripod": 0.6101576089859009, "wave": 1.0069048404693604}, "anatomical leg graph": {"tetrapod": 0.6447468400001526, "tripod": 0.5435289740562439, "wave": 0.8926945328712463}, "fully connected + attention": {"tetrapod": 0.6278789043426514, "tripod": 0.5310298800468445, "wave": 0.8940020799636841}}, "E2": {"hold last value": 15.255687713623047, "own history only": 3.4151968955993652, "anatomical leg graph": 4.781494140625, "fully connected + attention": 4.27734375}, "E3": {"tetrapod": [[0.22300000488758087, 0.13600000739097595, 0.03799999877810478, 0.3089999854564667, 0.06700000166893005, 0.22699999809265137], [0.33500000834465027, 0.11599999666213989, 0.20100000500679016, 0.054999999701976776, 0.13600000739097595, 0.15800000727176666], [0.164000004529953, 0.14399999380111694, 0.05999999865889549, 0.41499999165534973, 0.0729999989271164, 0.14399999380111694], [0.09000000357627869, 0.19200000166893005, 0.14300000667572021, 0.31200000643730164, 0.20600000023841858, 0.05700000002980232], [0.12800000607967377, 0.24300000071525574, 0.0729999989271164, 0.3160000145435333, 0.1459999978542328, 0.09399999678134918], [0.06199999898672104, 0.25600001215934753, 0.3869999945163727, 0.07699999958276749, 0.19099999964237213, 0.027000000700354576]], "tripod": [[0.4269999861717224, 0.06199999898672104, 0.14800000190734863, 0.14300000667572021, 0.10999999940395355, 0.10999999940395355], [0.21699999272823334, 0.164000004529953, 0.06400000303983688, 0.14499999582767487, 0.12800000607967377, 0.28299999237060547], [0.3409999907016754, 0.06499999761581421, 0.041999999433755875, 0.03700000047683716, 0.25999999046325684, 0.2549999952316284], [0.14300000667572021, 0.1080000028014183, 0.10999999940395355, 0.4269999861717224, 0.07000000029802322, 0.14100000262260437], [0.14800000190734863, 0.11900000274181366, 0.28600001335144043, 0.22699999809265137, 0.16599999368190765, 0.054999999701976776], [0.03999999910593033, 0.2549999952316284, 0.25600001215934753, 0.3569999933242798, 0.054999999701976776, 0.03799999877810478]], "wave": [[0.2460000067949295, 0.17800000309944153, 0.2619999945163727, 0.14399999380111694, 0.11900000274181366, 0.050999999046325684], [0.1679999977350235, 0.2720000147819519, 0.10100000351667404, 0.10400000214576721, 0.24500000476837158, 0.10899999737739563], [0.07699999958276749, 0.3970000147819519, 0.1120000034570694, 0.08699999749660492, 0.08500000089406967, 0.24199999868869781], [0.17100000381469727, 0.19099999964237213, 0.052000001072883606, 0.3310000002384186, 0.09000000357627869, 0.164000004529953], [0.07400000095367432, 0.20800000429153442, 0.1289999932050705, 0.20800000429153442, 0.257999986410141, 0.12399999797344208], [0.08299999684095383, 0.1509999930858612, 0.23499999940395355, 0.11400000005960464, 0.3479999899864197, 0.07000000029802322]]}, "E4": {"10": {"hold last value": 9.958502769470215, "own history only": 0.7005324959754944, "anatomical leg graph": 0.5443959832191467, "fully connected + attention": 0.5200541019439697}, "20": {"hold last value": 15.247102737426758, "own history only": 0.9399983882904053, "anatomical leg graph": 0.7587582468986511, "fully connected + attention": 0.7324551939964294}, "40": {"hold last value": 18.446584701538086, "own history only": 1.2503241300582886, "anatomical leg graph": 0.9394179582595825, "fully connected + attention": 0.9245818853378296}, "80": {"hold last value": 4.058284282684326, "own history only": 1.291676640510559, "anatomical leg graph": 0.8202468156814575, "fully connected + attention": 0.7989628911018372}}};
+const RASTER = {"tripod": ["111000000000000000111111111111111111111111111000000000001110011111111111111111111111111100000000000010111111111111111111111111111000000000001001111111", "111111111111111111111111010000000000011111111111111111111111111111100000000000111111111111111111111111111111000000000001111111111111111111111111111110", "111010111111101111111111111111111111111111111101011111111111111111111111111111111111111101011111111111111111111111111111111111110100111111111111111111", "111111111111111111111111100000000000100111111111111111111111111111110000000000100111111111111111111111111111100000000011100111111111111111111111111111", "111010000000000011111111111111111111111111111100000000001111011111111111111111111111111100000000001100111111111111111111111111111110000000001111111111", "111111111111111111111111111000111110111111111111111111111111111111101110111111111111111111111111111111111111000011000111111111111111111111111111111111"], "tetrapod": ["000000000010111111111111111111111111111110000000000000011111111111111111111111111110000000000001111111111111111111111111111110000000000101111111111111", "111111111111111111111111111011000000001100111111111111111111111111111000000000001110111111111111111111111111111110000000001001011111111111111111111111", "111111111111111011111111111111111111111111111111111111110101110111111111111111111111111111111111110011111111111111111111111111111111111111100111111111", "111111111111110000000000000010000000000001111111111111100000000000000100000000000001111111111111110000000000000101111111111111111111111111100000000000", "000000000000110000001111111111111111111110000000000001000000011111111111111111111110000000000001010000111111111111111111111110000000000001000000011111", "111111111111111111111111111000001111111111111111111111111111111111111110000111111111111111111111111111111111111110000111111111111111111111111111111111"], "wave": ["001101111111111111111111111111100000000000001111111111111111111111111111100000000000011111111111111111111111111111000000000000011111111111111111111111", "111111111111111111111111000000000000001111111111111111111111111111000000000000001111111111111111111111111110000000000000011111111111111111111111111110", "111111111111111111100011111101111111111111111111111111111111100111111101111111111111111111111111111110000011111111111111111111111111111111111110011001", "111111111100000000000000000001111111111111111111111100000000000000000001111111111111111111111000000000000000000011111111111111111111111000000000000000", "111000000000000000000001111111111111111111111000000000000000000001111111111111111111111000000000000000000001111111111111111111110000000000000000000011", "001011111111111111111111111111111111110000011101011111111111111111111111111111110101101110111111111111111111111111111111100011111111001111111111111111"]};
+const LEGS = ["lf","lm","lh","rf","rm","rh"];
+const LAB = {lf:"LF",lm:"LM",lh:"LH",rf:"RF",rm:"RM",rh:"RH"};
+const NS="http://www.w3.org/2000/svg";
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function el(tag, attrs={}, parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function txt(parent,x,y,s,attrs={}){const t=el("text",Object.assign({x,y,"font-size":12,class:"svgmuted"},attrs),parent);t.textContent=s;return t;}
+function clear(s){while(s.firstChild)s.removeChild(s.firstChild);}
+
+// ---------- leg graph
+(function(){
+ const s=document.getElementById("leggraph");
+ const P={lf:[110,70],lm:[90,150],lh:[110,230],rf:[250,70],rm:[270,150],rh:[250,230]};
+ el("ellipse",{cx:180,cy:150,rx:34,ry:105,fill:"none",stroke:css("--line"),"stroke-width":2},s);
+ txt(s,180,154,"body",{"text-anchor":"middle",class:"svgfaint"});
+ const E=[["lf","lm"],["lm","lh"],["rf","rm"],["rm","rh"],["lf","rf"],["lm","rm"],["lh","rh"]];
+ E.forEach(([a,b])=>el("line",{x1:P[a][0],y1:P[a][1],x2:P[b][0],y2:P[b][1],stroke:css("--accent"),"stroke-width":2.2,opacity:.75},s));
+ [["lf","rm"],["lf","lh"],["lm","rf"],["lm","rh"],["rf","rh"],["rm","lh"],["lf","rh"],["rf","lh"]].forEach(([a,b])=>el("line",{x1:P[a][0],y1:P[a][1],x2:P[b][0],y2:P[b][1],stroke:css("--faint"),"stroke-width":1,"stroke-dasharray":"3 4",opacity:.6},s));
+ LEGS.forEach(k=>{const tgt=k==="lm";
+  el("circle",{cx:P[k][0],cy:P[k][1],r:19,fill:tgt?css("--accent-2"):css("--surface"),stroke:tgt?css("--accent-2"):css("--accent"),"stroke-width":2},s);
+  txt(s,P[k][0],P[k][1]+4,LAB[k],{"text-anchor":"middle","font-size":12,"font-weight":700,fill:tgt?"#fff":css("--ink"),class:""});});
+ txt(s,20,290,"━ anatomical edges",{fill:css("--accent"),class:""});
+ txt(s,170,290,"··· extra edges (fully connected)",{});
+ txt(s,52,150,"hidden",{"text-anchor":"end",fill:css("--accent-2"),class:"","font-size":11});
+})();
+
+// ---------- raster
+function drawRaster(g){
+ const s=document.getElementById("raster");clear(s);
+ const x0=44,w=284,rows=RASTER[g],n=rows[0].length,rh=28;
+ rows.forEach((r,i)=>{
+  txt(s,x0-10,22+i*rh+14,LAB[LEGS[i]],{"text-anchor":"end","font-weight":600});
+  el("rect",{x:x0,y:22+i*rh,width:w,height:rh-8,fill:css("--swing"),rx:3},s);
+  let st=-1;
+  for(let j=0;j<=n;j++){const on=j<n&&r[j]==="1";
+   if(on&&st<0)st=j;
+   if(!on&&st>=0){el("rect",{x:x0+st*w/n,y:22+i*rh,width:(j-st)*w/n,height:rh-8,fill:css("--stance"),rx:2},s);st=-1;}}
+ });
+ const yb=22+6*rh+6;
+ [0,100,200,300].forEach(t=>{txt(s,x0+t*w/300,yb+10,t+" ms",{"text-anchor":"middle","font-size":11});});
+}
+function tabs(id,items,fn,start){const box=document.getElementById(id);
+ items.forEach(g=>{const b=document.createElement("button");b.textContent=g;b.setAttribute("aria-pressed",g===start);
+  b.onclick=()=>{box.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed","false"));b.setAttribute("aria-pressed","true");fn(g);};box.appendChild(b);});
+ fn(start);}
+tabs("rtabs",["tripod","tetrapod","wave"],drawRaster,"tripod");
+
+// ---------- timeline
+(function(){
+ const s=document.getElementById("timeline");
+ const x0=70,x1=640,tx=600,scale=(x1-x0-60)/80; // 80 ms span
+ const X=ms=>tx-ms*scale;
+ LEGS.forEach((k,i)=>{const y=28+i*30,tgt=k==="lm";
+  txt(s,x0-12,y+14,LAB[k],{"text-anchor":"end","font-weight":600,fill:tgt?css("--accent-2"):css("--ink"),class:""});
+  el("line",{x1:x0,y1:y+10,x2:x1,y2:y+10,stroke:css("--line")},s);
+  if(tgt){el("rect",{x:X(40),y:y,width:20*scale,height:20,rx:4,fill:css("--accent-2"),opacity:.85},s);
+   el("rect",{x:X(20),y:y,width:20*scale,height:20,rx:4,fill:"none",stroke:css("--accent-2"),"stroke-dasharray":"4 3"},s);
+   txt(s,X(10),y+14,"hidden",{"text-anchor":"middle","font-size":11,fill:css("--accent-2"),class:""});
+   el("circle",{cx:tx,cy:y+10,r:7,fill:css("--accent-2")},s);
+   txt(s,tx+14,y+14,"predict 7 angles",{"font-size":12,fill:css("--accent-2"),class:"","font-weight":600});}
+  else el("rect",{x:X(20),y:y,width:20*scale,height:20,rx:4,fill:css("--accent"),opacity:.75},s);
+ });
+ const yb=28+6*30+8;
+ el("line",{x1:tx,y1:20,x2:tx,y2:yb,stroke:css("--ink"),"stroke-width":1.2},s);
+ txt(s,tx,yb+16,"t (now)",{"text-anchor":"middle",class:"svgtext","font-weight":600});
+ el("line",{x1:X(20),y1:yb,x2:X(20),y2:yb-8,stroke:css("--faint")},s);
+ txt(s,X(20),yb+16,"t − d",{"text-anchor":"middle"});
+ txt(s,X(60),yb+16,"20 ms windows · d = 20 ms in the main experiments",{"text-anchor":"middle","font-size":11});
+})();
+
+// ---------- bar chart helper
+const MODELS=[["own history only","--c-own"],["anatomical leg graph","--c-anat"],["fully connected + attention","--c-full"]];
+function axisY(s,x0,y0,h,max,step,label){
+ for(let v=0;v<=max+1e-9;v+=step){const y=y0-h*v/max;
+  el("line",{x1:x0,y1:y,x2:700,y2:y,stroke:css("--line")},s);
+  txt(s,x0-8,y+4,v.toFixed(v<1?1:(step<1?1:0)),{"text-anchor":"end","font-size":11});}
+ const t=txt(s,16,y0-h/2,label,{"text-anchor":"middle","font-size":11,transform:`rotate(-90 16 ${y0-h/2})`});
+}
+(function(){
+ const s=document.getElementById("e1chart"),x0=60,y0=240,h=210,max=1.2;
+ axisY(s,x0,y0,h,max,0.2,"RMSE (deg)");
+ const gaits=["tripod","tetrapod","wave"],gw=(700-x0)/3,bw=44;
+ gaits.forEach((g,i)=>{const cx=x0+gw*i+gw/2;
+  MODELS.forEach(([m,c],j)=>{const v=DATA.E1[m][g],x=cx+(j-1)*(bw+8)-bw/2,bh=h*v/max;
+   el("rect",{x,y:y0-bh,width:bw,height:bh,rx:4,fill:css(c)},s);
+   txt(s,x+bw/2,y0-bh-6,v.toFixed(2),{"text-anchor":"middle","font-size":11,class:"svgtext"});});
+  txt(s,cx,y0+20,g,{"text-anchor":"middle","font-size":13,class:"svgtext","font-weight":600});});
+})();
+(function(){
+ const s=document.getElementById("e4chart"),x0=60,y0=250,h=215,max=1.4,ds=Object.keys(DATA.E4).map(Number).sort((a,b)=>a-b);
+ axisY(s,x0,y0,h,max,0.2,"RMSE (deg)");
+ const X=d=>x0+40+(d-ds[0])/(ds[ds.length-1]-ds[0])*(700-x0-80);
+ ds.forEach(d=>txt(s,X(d),y0+20,d+" ms",{"text-anchor":"middle","font-size":12,class:"svgtext"}));
+ txt(s,(x0+700)/2,y0+40,"delay of the hidden leg's own signal",{"text-anchor":"middle","font-size":11});
+ MODELS.forEach(([m,c])=>{const pts=ds.map(d=>[X(d),y0-h*DATA.E4[d][m]/max]);
+  el("polyline",{points:pts.map(p=>p.join(",")).join(" "),fill:"none",stroke:css(c),"stroke-width":2.5},s);
+  pts.forEach(p=>el("circle",{cx:p[0],cy:p[1],r:4.5,fill:css(c)},s));});
+ ds.forEach(d=>{const o=DATA.E4[d]["own history only"],f=DATA.E4[d]["fully connected + attention"];
+  txt(s,X(d),y0-h*o/max-12,"−"+Math.round(100*(o-f)/o)+"%",{"text-anchor":"middle","font-size":12,"font-weight":700,fill:css("--c-full"),class:""});});
+})();
+(function(){
+ const s=document.getElementById("e2chart"),names=[["hold last value","--c-hold"],...MODELS],x0=200,max=16,w=470;
+ names.forEach(([m,c],i)=>{const v=DATA.E2[m],y=18+i*42,bw=w*v/max;
+  txt(s,x0-10,y+17,m,{"text-anchor":"end","font-size":12.5,class:"svgtext"});
+  el("rect",{x:x0,y,width:bw,height:26,rx:4,fill:css(c)},s);
+  txt(s,x0+bw+8,y+17,v.toFixed(2)+"°",{"font-size":12,class:"svgtext","font-weight":m==="own history only"?700:400});});
+})();
+// ---------- attention
+function drawAttn(g){
+ const s=document.getElementById("attn");clear(s);
+ const A=DATA.E3[g],c=44,x0=230,y0=34,max=Math.max(...A.flat());
+ const acc=css("--accent"),bg=css("--surface");
+ LEGS.forEach((k,i)=>{txt(s,x0-10,y0+i*c+c/2+4,LAB[k],{"text-anchor":"end","font-weight":600,class:"svgtext"});
+  txt(s,x0+i*c+c/2,y0-10,LAB[k],{"text-anchor":"middle","font-weight":600,class:"svgtext"});});
+ A.forEach((row,i)=>row.forEach((v,j)=>{
+  el("rect",{x:x0+j*c+1,y:y0+i*c+1,width:c-2,height:c-2,rx:4,fill:acc,"fill-opacity":(0.06+0.94*v/max).toFixed(3)},s);
+  txt(s,x0+j*c+c/2,y0+i*c+c/2+4,v.toFixed(2),{"text-anchor":"middle","font-size":11,fill:v/max>0.55?"#fff":css("--ink"),class:""});}));
+ txt(s,x0+3*c,y0+6*c+22,"attended leg →",{"text-anchor":"middle","font-size":12});
+ txt(s,x0-50,y0+3*c,"hidden leg",{"text-anchor":"middle","font-size":12,transform:`rotate(-90 ${x0-50} ${y0+3*c})`});
+}
+tabs("atabs",["tripod","tetrapod","wave"],drawAttn,"tripod");
+</script>
+</body>
+</html>
